@@ -7,6 +7,7 @@ import uuid
 import os.path
 import urllib.parse
 import sys
+from time import time
 
 API_URL = 'https://api.boosty.to'
 
@@ -29,13 +30,21 @@ class BoostyToRSS():
       self.phone_number = self.config['phone_number']
     else:
       self.phone_number = urllib.parse.quote_plus(input("Enter your phone number: "))
-      
-    
+
     if 'access_token' in self.config:
       self.access_token = self.config['access_token']
       self.refresh_token = self.config['refresh_token']
+      if 'expires' in self.config:
+        self.expires = self.config['expires']
+        if int(time()) >= self.expires:
+          refresh_needed = True
+      else:
+        refresh_needed = True
     else:
       self.authenticate()
+
+    if refresh_needed:
+      self.refresh_auth()
 
   def __del__(self):
     print('Destructor called, vehicle deleted.')
@@ -46,6 +55,7 @@ class BoostyToRSS():
       self.config['phone_number'] = self.phone_number
       self.config['access_token'] = self.access_token
       self.config['refresh_token'] = self.refresh_token
+      self.config['expires'] = self.expires
       json.dump(self.config, config_file)
   
   def authenticate(self):
@@ -80,9 +90,36 @@ class BoostyToRSS():
     response_data = response.json()
     self.refresh_token = response_data['refresh_token']
     self.access_token = response_data['access_token']
+    self.expires = int(time()) + response_data['expires_in']
 
     self.save_config()
 
+
+  def refresh_auth(self):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:91.0) Gecko/20100101 Firefox/91.0',
+        'Authorization': f'Bearer {self.access_token}',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-From-Id': self.uuid,
+        'X-App': 'web',
+        'X-Referer': '', 
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        }
+    request_body = f'device_id={self.uuid}&device_os=web&grant_type=refresh_token&refresh_token={self.refresh_token}'
+    response = requests.post(f'{API_URL}/oauth/token/',
+        data=request_body,
+        headers=headers)
+
+    response_data = response.json()
+    self.refresh_token = response_data['refresh_token']
+    self.access_token = response_data['access_token']
+    self.expires = int(time()) + response_data['expires_in']
+
+    self.save_config()
 
   def generate_rss(self, author):
     headers = {
