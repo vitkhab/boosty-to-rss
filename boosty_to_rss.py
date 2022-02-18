@@ -168,8 +168,14 @@ class BoostyToRSS():
         if not post['hasAccess']:
             continue
         desc = ''
+
+        download_url = None
         for content in post['data']:
             if content['type'] == 'audio_file':
+                url = content['url']
+                params = post['signedQuery']
+                download_url = f'{url}{params}'
+            elif content['type'] == 'file' and 'mp3' in content['title']:
                 url = content['url']
                 params = post['signedQuery']
                 download_url = f'{url}{params}'
@@ -177,6 +183,7 @@ class BoostyToRSS():
                 text = ast.literal_eval(content['content'])
                 desc += text[0] + '\r\n'
 
+        if 'download_url' in vars() and download_url:
         # TODO: add post covers
         fe = fg.add_entry()
         
@@ -185,6 +192,7 @@ class BoostyToRSS():
                 post_logo = teaser['url']
                 fe.enclosure(post_logo, 0, 'image/jpeg')
         # TODO: get real timezone
+
         fe.pubDate(datetime.fromtimestamp(post['publishTime'], timezone.utc))
         fe.title(post['title'])
         fe.description(desc)
