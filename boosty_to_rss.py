@@ -203,5 +203,7 @@ class BoostyToRSS():
 
 if __name__ == "__main__":
   # TODO: add cli arguments handling
+  podcast_name = sys.argv[1]
   b = BoostyToRSS()
-  b.generate_rss(sys.argv[1])
+  b.generate_rss(podcast_name)
+
